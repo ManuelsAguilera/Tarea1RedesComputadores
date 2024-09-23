@@ -6,14 +6,61 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-//Boilerplate
-int main(int argc, char *argv[]) {
-    // Comprobar el número de argumentos
-    if (argc > 1) {
-        printf("Hola %s!\n", argv[1]); // Imprimir el primer argumento
-    } else {
-        printf("Hola mundo!\n"); // Mensaje por defecto
-    }
+//typedefs
+typedef struct sockaddr sockaddr;
+typedef struct sockaddr_in sockaddr_in;
+
+
+
+
+//wrapper para errores
+void error(char *msg){
+    perror(msg);
+    exit(1);
+}
+
+void sendMsg(int sockFd, char* buff) {
+	fgets(buff,256,stdin);
+		if (send(sockFd,buff,strlen(buff),0) == -1)
+			error("No se enviaron datos");
+	memset(buff,0,sizeof(buff));
+}
+
+
+int getSock() //Obtiene un file descriptor para el socket
+{
+	int sockFd;
+	
+	if ((sockFd = socket(AF_INET,SOCK_STREAM,0)) == -1)
+		error("Hubo un error, socket FD no se pudo generar");
+	return sockFd;
+}
+
+void getSockAddr(const char* ip_addr, int port, sockaddr_in* addr_in) {
+    addr_in->sin_family = AF_INET; // IPv4
+    addr_in->sin_port = htons(port); // Puerto
     
-    return 0;
+    if (inet_pton(AF_INET, ip_addr, &addr_in->sin_addr) <= 0) { // Presentar dirección en formato binario
+        error("inet_pton error");
+    }
+}
+
+int main(int argc, const char* argv[]) {
+    int sockFd = getSock();
+    sockaddr_in addr;
+    getSockAddr("127.0.0.1", 1024, &addr);
+	
+
+	if ((connect(sockFd,(sockaddr*) &addr,sizeof(addr))) == -1)
+		error("Hubo un error, conexion cancelada");
+	
+
+	char buff[256];
+    
+	sendMsg(sockFd, buff);
+	
+	
+
+	close(sockFd);
+	return  0;
 }
