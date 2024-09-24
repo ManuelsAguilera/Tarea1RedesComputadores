@@ -5,12 +5,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <ctype.h>
+
 
 
 //typedefs
 typedef struct sockaddr sockaddr;
 typedef struct sockaddr_in sockaddr_in;
-
+typedef struct sockaddr_in6 sockaddr_in6;
 
 
 //wrapper para errores
@@ -28,6 +30,18 @@ void getSockAddr(const char* ip_addr, int port, sockaddr_in* addr_in) {
     }
 }
 
+void getSockAddrIPv6(const char* ip_addr, int port, struct sockaddr_in6* addr_in6) {
+    addr_in6->sin6_family = AF_INET6; //IPv6
+    
+    
+    addr_in6->sin6_port = htons(port); //Puerto
+    
+    if (inet_pton(AF_INET6, ip_addr, &addr_in6->sin6_addr) <= 0) { //Presentar direccion en formato binario
+        perror("inet_pton error");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int getSock() //Obtiene un file descriptor para el socket
 {
     int sockFd;
@@ -38,19 +52,67 @@ int getSock() //Obtiene un file descriptor para el socket
 }
 
 
+void recvFromClient(int clientFd, char* buff) {
+    ssize_t bytes_r = recv(clientFd, buff, sizeof(buff), 0);
+    if (bytes_r == -1)
+        error("Error al recibir mensaje");
+    else if (bytes_r == 0)
+    {
+        printf("Se ha cerrado la conexion\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+int isStringDigit(const char* str) {
+    for (int i = 0; i < strlen(str); i++) {
+        if (!isdigit(str[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int getClientPortFromArg(const char* argv[]) {
+    //Corroborar que el string sea un numero
+    
+    if (!isStringDigit(argv[1])) {
+        error("El puerto del cliente debe ser un numero");
+    }
+    return atoi(argv[1]);
+}
+
+int getServerPortFromArg(const char* argv[]) {
+    //Corroborar que el string sea un numero
+    
+    if (!isStringDigit(argv[1])) {
+        error("El puerto del cliente debe ser un numero");
+    }
+
+    return atoi(argv[2]);
+}
+
 
 int main(int argc, const char* argv[])
 {
 	
+    if (argc != 3) {
+        error("Uso: ./server <listen port> <server port>");
+    }
+
+    int clientPort = getClientPortFromArg(argv);
+    int serverPort = getServerPortFromArg(argv);
+
 	int sockFd = getSock();
-    sockaddr_in addr;
     
+    sockaddr_in addr,clientAddr;
 
-    getSockAddr("127.0.0.1", 1024, &addr);
+    getSockAddr("127.0.0.1", clientPort, &addr);
 	socklen_t len_addr = sizeof(addr);
+    socklen_t len_clientAddr = sizeof(clientAddr);
 
 
-
+    //iniciar server
     int clientFd;
 
     bind(sockFd,(struct sockaddr * ) &addr, len_addr);
@@ -60,34 +122,31 @@ int main(int argc, const char* argv[])
     
     printf("Escuchando dispositivos\n");
 
-    clientFd = accept(sockFd,(struct sockaddr * ) &addr,&len_addr);
+    clientFd = accept(sockFd,(struct sockaddr * ) &clientAddr, &len_clientAddr);
     printf("Se acaba de encontrar un dispositivo\n");
 
     if (clientFd == -1)
         error("Se recibio un mensaje error");
 
     
+    //Recibir mensaje    
     char buff[256];
-    while (strcmp(buff,"stop\n") != 0)
-    {
-        memset(buff,0,sizeof(buff));
 
-        ssize_t bytes_r = recv(clientFd,buff,sizeof(buff),0);
-        if (bytes_r == -1)
-            error("Error al recibir mensaje");
-        else if (bytes_r == 0)
-        {
-            printf("Se ha cerrado la conexion\n");
-            break;
-        }
-            
-        
-        printf("%s",buff);
-    }
+    recvFromClient(clientFd, buff);
+
+
+    //Obtener ip y puerto para imprimir
     
+    char* clientAddrText = inet_ntoa(clientAddr.sin_addr);
+    
+    printf("Client Ip %s , Client port %d\n",clientAddrText,clientPort);
+    
+    //Enviar a servidor udp
+
+
     
     close(sockFd);
-    close(clientFd);
+    
 
     return 0;
 }

@@ -20,10 +20,10 @@ void error(char *msg){
 }
 
 void sendMsg(int sockFd, char* buff) {
-	fgets(buff,256,stdin);
-		if (send(sockFd,buff,strlen(buff),0) == -1)
-			error("No se enviaron datos");
-	memset(buff,0,sizeof(buff));
+	
+    if (send(sockFd,buff,strlen(buff),0) == -1)
+        error("No se enviaron datos");
+
 }
 
 
@@ -45,18 +45,37 @@ void getSockAddr(const char* ip_addr, int port, sockaddr_in* addr_in) {
     }
 }
 
+int getPortFromArg(const char* argv[]) {
+    return atoi(argv[1]);
+}
+
+
+void getMessageFromArg(char* buff, const char* argv[]) {
+    strcpy(buff, argv[2]);
+}
+
+
 int main(int argc, const char* argv[]) {
+
+    if (argc != 3) {
+        error("Uso: ./client <port> <message>");
+    }
+
+    int port = getPortFromArg(argv);
+
+    char buff[256];
+    getMessageFromArg(buff, argv);
+
     int sockFd = getSock();
     sockaddr_in addr;
-    getSockAddr("127.0.0.1", 1024, &addr);
+    getSockAddr("127.0.0.1", port, &addr);
 	
+
 
 	if ((connect(sockFd,(sockaddr*) &addr,sizeof(addr))) == -1)
 		error("Hubo un error, conexion cancelada");
 	
 
-	char buff[256];
-    
 	sendMsg(sockFd, buff);
 	
 	
