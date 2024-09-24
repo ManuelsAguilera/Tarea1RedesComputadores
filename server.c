@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <ctype.h>
 
 //typedefs
 typedef struct sockaddr sockaddr;
@@ -24,6 +25,7 @@ void getSockAddrIPv6(const char* ip_addr, int port, struct sockaddr_in6* addr_in
     
     
     addr_in6->sin6_port = htons(port); //Puerto
+    addr_in6->sin6_addr = in6addr_any; //recieve ipv6
     
     if (inet_pton(AF_INET6, ip_addr, &addr_in6->sin6_addr) <= 0) { //Presentar direccion en formato binario
         error("inet_pton error");
@@ -61,10 +63,10 @@ int getPortFromArg(const char* argv[]) {
 
 
 //Boilerplate
-int main(int argc, char *argv[]) {
+int main(int argc,const char *argv[]) {
     // Comprobar el número de argumentos
     if (argc != 2) 
-        error("Uso: ./client <ip> <mensaje>");
+        error("Uso: ./server <listen port>");
     
 
 
@@ -72,12 +74,18 @@ int main(int argc, char *argv[]) {
     int port = getPortFromArg(argv);
 
     int sockFd = getSock();
+    
     getSockAddrIPv6("::1", port, &addr);
+    socklen_t addr_len = sizeof(addr);
 
     //Making udp server
     char buff[256];
 
-    if (recvfrom(sockFd, buff, sizeof(buff), 0, (sockaddr*)&addr, sizeof(addr)) == -1)
+    bind(sockFd,(sockaddr *)&addr,addr_len);
+    
+    printf("Waiting for broker...\n");
+    
+    if (recvfrom(sockFd, buff, sizeof(buff), 0, (sockaddr*)&addr, &addr_len) == -1)
         error("Error al recibir mensaje");
 
     printf("Mensaje recibido: %s\n", buff);

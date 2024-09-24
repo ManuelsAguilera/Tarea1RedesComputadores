@@ -35,6 +35,7 @@ void getSockAddrIPv6(const char* ip_addr, int port, struct sockaddr_in6* addr_in
     
     
     addr_in6->sin6_port = htons(port); //Puerto
+    addr_in6->sin6_addr = in6addr_any; //recieve ipv6
     
     if (inet_pton(AF_INET6, ip_addr, &addr_in6->sin6_addr) <= 0) { //Presentar direccion en formato binario
         error("inet_pton error");
@@ -101,17 +102,9 @@ int getServerPortFromArg(const char* argv[]) {
 }
 
 
-int main(int argc, const char* argv[])
+void recibeMsgSubroutine(int clientPort,char* buff)
 {
-	
-    if (argc != 3) {
-        error("Uso: ./server <listen port> <server port>");
-    }
-
-    int clientPort = getClientPortFromArg(argv);
-    int serverPort = getServerPortFromArg(argv);
-
-	int sockFd = getSock();
+    int sockFd = getSock();
     
     sockaddr_in addr,clientAddr;
 
@@ -138,28 +131,49 @@ int main(int argc, const char* argv[])
 
     
     //Recibir mensaje    
-    char buff[256];
-
     recvFromClient(clientFd, buff);
-
 
     //Obtener ip y puerto para imprimir
     
     char* clientAddrText = inet_ntoa(clientAddr.sin_addr);
     
     printf("Client Ip %s , Client port %d\n",clientAddrText,clientPort);
+    
+
     close(clientFd);
     close(sockFd);
-    //Enviar a servidor udp
+    
+}
 
-    sockFd = getSock6();
+
+int main(int argc, const char* argv[])
+{
+	
+    if (argc != 3) {
+        error("Uso: ./server <listen port> <send port>");
+    }
+
+    int clientPort = getClientPortFromArg(argv);
+    int serverPort = getServerPortFromArg(argv);
+
+    char buff[256]; //donde almacenar el mensaje
+
+    recibeMsgSubroutine(clientPort,buff);
+
+    
+    // Enviar mensaje al servidor UDP en IPv6
+    int sockFd = getSock6();
     sockaddr_in6 addr6;
 
     getSockAddrIPv6("::1", serverPort, &addr6);
 
-    if (sendto(sockFd, buff, sizeof(buff), 0, (sockaddr*)&addr6, sizeof(addr6)) == -1)
+    printf("sending: %s\n",buff);
+    if (sendto(sockFd, buff, strlen(buff), 0, (sockaddr*)&addr6, sizeof(addr6)) == -1) {
         error("Error al enviar mensaje");
+    }
 
+    // Cerrar el socket
+    close(sockFd);
 
     return 0;
 }
