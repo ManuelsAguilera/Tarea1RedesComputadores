@@ -37,8 +37,7 @@ void getSockAddrIPv6(const char* ip_addr, int port, struct sockaddr_in6* addr_in
     addr_in6->sin6_port = htons(port); //Puerto
     
     if (inet_pton(AF_INET6, ip_addr, &addr_in6->sin6_addr) <= 0) { //Presentar direccion en formato binario
-        perror("inet_pton error");
-        exit(EXIT_FAILURE);
+        error("inet_pton error");
     }
 }
 
@@ -47,6 +46,15 @@ int getSock() //Obtiene un file descriptor para el socket
     int sockFd;
     
     if ((sockFd = socket(AF_INET,SOCK_STREAM,0)) == -1)
+        error("Hubo un error, socket FD no se pudo generar");
+    return sockFd;
+}
+
+int getSock6() //Obtiene un file descriptor para el socket
+{
+    int sockFd;
+    
+    if ((sockFd = socket(AF_INET6,SOCK_DGRAM,0)) == -1)
         error("Hubo un error, socket FD no se pudo generar");
     return sockFd;
 }
@@ -140,13 +148,18 @@ int main(int argc, const char* argv[])
     char* clientAddrText = inet_ntoa(clientAddr.sin_addr);
     
     printf("Client Ip %s , Client port %d\n",clientAddrText,clientPort);
-    
+    close(clientFd);
+    close(sockFd);
     //Enviar a servidor udp
 
+    sockFd = getSock6();
+    sockaddr_in6 addr6;
 
-    
-    close(sockFd);
-    
+    getSockAddrIPv6("::1", serverPort, &addr6);
+
+    if (sendto(sockFd, buff, sizeof(buff), 0, (sockaddr*)&addr6, sizeof(addr6)) == -1)
+        error("Error al enviar mensaje");
+
 
     return 0;
 }
