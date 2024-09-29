@@ -11,27 +11,33 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-
-
+//Para poder leer consistenemente el buffer sin pasarse, o perder info
 #define BUFFER_SIZE 256
+
+
+
 // Estructuras comunes
 typedef struct sockaddr sockaddr;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr_in6 sockaddr_in6;
 
-// Funciones comunes
+// Es el wrapper de errores
 void error(char *msg);
 
+//Para evitar errores edge cases
 int isStringDigit(const char* str);
 
-int getIntFromArg(const char* argv[],int index); //Para leer puertos
+//Para leer puertos
+int getIntFromArg(const char* argv[],int index); 
 
-int getSock(int domain, int type); //Obtiene un file descriptor para el socket
+//Obtiene un file descriptor para el socket
+int getSock(int domain, int type); 
 
+//Inicializa la sockaddr_in6 con la dirección y puerto usando udp e ipv6
 void getSockAddrIPv6(const char* ip_addr, int port, struct sockaddr_in6* addr_in6);
-//Inicializa la sockaddr_in con la dirección y puerto usando udp e ipv6
 
-void getSockAddrIPv4(const char* ip_addr, int port, struct sockaddr_in* addr_in);
 //Inicializa la sockaddr_in con la dirección y puerto usando udp e ipv4
+void getSockAddrIPv4(const char* ip_addr, int port, struct sockaddr_in* addr_in);
+
 
 #endif // UTILS_H
